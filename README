@@ -1,0 +1,203 @@
+Next Generation Pretty README.
+
+WARNING: Please read BUGS for important information before using npretty!
+
+npretty is a perl script which generates image galleries.
+It can generate thumbnail and preview pages based on a template,
+convert videos to gif89a(via mplayer), remove EXIF thumbnails and auto-rotate
+images (via jhead), scale images with many different filters and much more.
+
+Requirements
+============
+- Anything but Windows (fork won't work)
+- Kernel threading support
+- perl > 5.8.x (untested on anything lower)
+- perl fork module
+- Image::ExifTool perl module
+- Image::Magic
+- Getopt::Long
+
+Suggested dependencies
+======================
+mplayer with many codecs and gif89a output support (http://mplayerhq.hu)
+display (comes with imagemagick) (http://www.imagemagick.org)
+jhead (http://www.sentex.net/~mwandel/jhead/)
+
+Install
+=======
+If you don't have the required perl modules, the 'quick and dirty' way to
+install them is to start up cpan and then:
+cpan> force install forks
+cpan> force install Image::ExifTool
+cpan> force install Image::Magick
+
+Agree to all dependencies cpan wants to get.
+Assuming you have ImageMagick and forking support, this should work even
+though it will spawn a lot of warnings and errors. 
+
+create /etc/npretty/ and copy novideo.gif, npretty_template.tpl and npretty.conf
+to it.
+
+Then place npretty.pl in a fitting directory and make it executable:
+as root,
+   chmod +x npretty.pl
+   cp npretty.pl /usr/local/bin
+
+You should now be ready to go!
+
+Usage
+=====
+
+There are too many ways to use npretty for me to describe them all here.
+Usually, something like
+	npretty.pl --image-path=/path/to/images/ --destination=/my/destination/
+should be a good start.
+
+Options
+=======
+	
+--video-preview-dimensions=  video preview dimensions XxY
+--image-quality=             image quality in percent (JPEG/MIFF/PNG only)
+--resize-algorithm=          resizing algorithm, set to 'help' for list
+--keep-thumb-ratio           keep aspect ratio of thumbnails
+--keep-preview-ratio         keep aspect ratio of previews
+--use-video                  use video converter
+--use-preprocessor           use pre-processor
+--pre-remove-cthumbs         remove cam thumbs with pre-processor
+--pre-auto-rotate            auto-rotate images with pre-processor
+--jobs=                      jobs to run simultaneously
+--mplayer-path=              path to 'mplayer' binary
+--image-path=                path to images
+--image-dest=                destination path for images
+--thumb-dest=                destination path for thumbs
+--destination=               destination prefix for archive
+--preview-dest=              destination path for previews
+--thumb-dimensions=          thumbnail dimensions, XxY
+--preview-dimensions=        preview dimensions XxY
+--thumbs-per-page=           max thumbs per page
+--pages=                     max number of pages
+--sloppy-files=              be sloppy on page calculation
+--title=                     text to prepend to title tag
+--config=                    use config instead of config hierarchy
+--sidepad=                   string to pad thumb/preview lists with
+--delete-originals           delete original images
+--overwrite-images           overwrite images
+--overwrite-previews         overwrite previews
+--overwrite-thumbs           overwrite thumbnails
+--overwrite-all              overwrite everything
+--overwrite-nothing          overwrite nothing
+--template                   template file to use
+--skip-images                skip image creation
+--skip-pages                 skip page creation
+--recursive                  recursively look for images
+--comments                   ask for comment on each image
+--preview                    show preview before comment
+--sloppy                     enable sloppiness
+--help                       this text
+--version                    version
+
+Template
+========
+The template file consists of blocks, subblocks and tags.
+
+Blocks
+------
+There are three major blocks:
+	[NPRETTY_BLOCK_THUMB]
+	[NPRETTY_BLOCK_BODY] and
+	[NPRETTY_BLOCK_PREVIEW]
+The THUMB block contains all initial and final HTML for thumbnail pages.
+The BODY block contains HTML code containing and surrounding each thumbnail
+image.
+The PREVIEW block contains all HTML for preview pages.
+Each BLOCK is closed by an identical block tag with a \/ prepended before the
+bracket. For example,
+  [NPRETTY_BLOCK_BODY] HTML here [/NPRETTY_BLOCK_BODY]
+
+Subblocks
+---------
+The major blocks contain subblocks and tags.
+Subblocks work the same as the major blocks, but are 
+mostly formed on a 'if exists'-basis.
+
+The subblocks are:
+	In THUMB block:
+		[NPRETTY_LIST]
+		[NPRETTY_LIST_IFSEL]
+		[NPRETTY_PREV_EXIST]
+		[NPRETTY_PREV_NOEXIST]
+		[NPRETTY_NEXT_EXIST]
+		[NPRETTY_NEXT_NOEXIST]
+		[NPRETTY_COMMENT_EXIST]
+		[NPRETTY_TITLE_EXIST]
+		[NPRETTY_TITLE_NOEXIST]
+	In BODY block:
+		[NPRETTY_DEL<_n>]
+		[NPRETTY_PAD_DEL]
+	In PREVIEW block:
+		[NPRETTY_PREV_LIST]
+		[NPRETTY_PREV_LIST_IFSEL]
+		[NPRETTY_PREV_IMG_EXIST]
+		[NPRETTY_PREV_IMG_NOEXIST]
+		[NPRETTY_NEXT_IMG_EXIST]
+		[NPRETTY_NEXT_IMG_NOEXIST]
+		[NPRETTY_COMMENT_EXIST]
+		[NPRETTY_TITLE_EXIST]
+		[NPRETTY_TITLE_NOEXIST]
+
+Most of these should be self-explanatory, but there are a few odd ones.
+
+The [NPRETTY_LIST] subblock specifies where and how you want to insert links to
+thumbnail pages. If you have five thumbnail pages, the code inserted in this
+subblock will be repeated five times, with the internal variables updated each
+iteration. This allows you to design the layout for your link menu.
+
+The [NPRETTY_PREV_LIST] is the same as [NPRETTY_LIST], but for preview pages.
+
+The [NPRETTY_DEL<_n>] subblock specifies code to be inserted between every <n>
+images. [NPRETTY_DEL_4] Hello! [/NPRETTY_DEL] would insert "Hello!" between
+every 4 images, unless the last image is the 4th.
+
+The [NPRETTY_PAD_DEL] subblock specifies code to be inserted as padding when
+there are no more images on the page, but the delimiter count is uneven.
+This is handy for properly ending a table, for example.
+
+Tags
+----
+Tags are internal variables which will be replaced with dynamic data based on
+the block and subblock in which the variable lies. There are several
+inconsistencies here which I blame on my sloppy coding, but for the mostpart
+it should work alright.
+
+Tags				Replaced with
+[NPRETTY_BODY]			contents of BODY block
+[NPRETTY_TITLE]			set title
+[NPRETTY_COMMENT]		set comment for current image
+[NPRETTY_LIST_PAGE]		current page in iterator
+[NPRETTY_LIST_NUM]		current page number in iterator
+[NPRETTY_PREV_PAGE]		previous page (if possible)
+[NPRETTY_PREV_PAGE_NUM]		previous page number (if possible)
+[NPRETTY_NEXT_PAGE]		next page (if possible)
+[NPRETTY_NEXT_PAGE_NUM]		next page number (if possible)
+[NPRETTY_PREVIEW_PAGE]		preview page for image
+[NPRETTY_THUMB]			thumbnail for image
+[NPRETTY_SIZE]			filesize of original image
+[NPRETTY_PAGE]			current page
+[NPRETTY_PREV_LIST_PAGE]	current preview page in iterator
+[NPRETTY_PREV_LIST_PAGE_NUM]	current preview page number in iterator
+[NPRETTY_PREV_IMG]		current preview image
+[NPRETTY_PREV_IMG_NAME]		current preview image name
+[NPRETTY_NEXT_IMG]		next image (if possible)
+[NPRETTY_NEXT_IMG_NAME]		next image name (if possible)
+[NPRETTY_FILENAME]		current image filename
+[NPRETTY_PREVIEW]		current preview image
+[NPRETTY_EXIF_<element>]	EXIF-element <element>
+
+How to use these would be a mess to document, and I'm not good at writing.
+Have a look at the default template file to see a good example of how it
+all works.
+
+Other
+=====
+npretty is licenced under the GPLv2.
+For contact, check http://www.pulia.nu/

@@ -1,0 +1,12 @@
+- The file overwrite handler is severely broken in some unknown cases.
+	Wictor Olseryd informs me that npretty overwrote all files it was _not_
+	supposed to overwrite, and skipped those it was supposed to overwrite!
+
+- Template parsing is extremely crude. No testing had been done out of the scope
+	of the example template, and if your template breaks somehow, I am
+	probably already aware of the problem.
+	
+I had not planned for npretty to be distributed directly due to lack of time to
+work on it, but it seems to have been packetised by some anyway.
+
+That's all :).
