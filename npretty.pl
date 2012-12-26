@@ -2,7 +2,7 @@
 #
 # Next Generation Pretty
 #
-# Copyright (C) 2006 Kristian Gunstone
+# Copyright (C) 2006-2012 Kristian Gunstone
 #
 # A simple thumbnail and page generator which
 # uses common software to do the job.
@@ -36,7 +36,7 @@
 # display (comes with imagemagick)
 # jhead   (for pre-processing)
 #
-# Changelog:
+# Pre-git Changelog:
 # n3.0/0.9
 # 	remove duplicate slashed in path
 # 	thread bug fix when calling jhead
@@ -124,14 +124,13 @@
 #
 #Notes:
 #files shouldn't have the same name as a directory
-#extensions should not be silly (BMP and bmp are fine, bMp is not)
 #
 
 use strict;
 use Image::Magick;
 use Image::ExifTool 'ImageInfo';
 use Getopt::Long;
-use File::Glob ':glob';
+use File::Find;
 use forks;
 use Fcntl ':mode';
 $SIG{CHLD} = 'DEFAULT'; # Needs to be set to IGNORE during forks
@@ -163,6 +162,7 @@ my $sidepad			=	"..&nbsp;";
 my $thumb_keep_aspect		=	1;
 my $preview_keep_aspect		=	1;
 my $recursive			=	0;
+my $maxdepth			=	-1;
 my $comments			=	0;
 my $overwrite			=	0;
 my $overwrite_images		=	0;
@@ -250,6 +250,7 @@ my @arglist =(
     "skip-images                skip image creation",
     "skip-pages                 skip page creation",
     "recursive                  recursively look for images",
+    "maxdepth                   traversal depth if recursive",
     "comments                   ask for comment on each image",
     "preview                    show preview before comment",
     "sloppy                     enable sloppiness",
@@ -589,6 +590,7 @@ my $result = GetOptions(
     "skip-images"	=> sub{$generation_mode = 2;},
     "skip-pages"	=> sub{$generation_mode = 1;},
     "recursive"		=> \$recursive,
+    "maxdepth=i"	=> \$maxdepth,
     "keep-thumb-ratio"	=> \$thumb_keep_aspect,
     "keep-preview-ratio"=> \$preview_keep_aspect,
     "comments"		=> \$comments,
@@ -607,6 +609,13 @@ die "Incorrect thumbnail dimension format" unless $thumb_dimensions =~m/^[0-9]+?
 die "Incorrect preview dimension format" unless $preview_dimensions =~m/^[0-9]+?x[0-9]+?$/;
 die "Incorrect video preview dimension format" unless $video_preview_dimensions =~m/^[0-9]+?x[0-9]+?$/;
 die "Incorrect image quality range" if $image_quality < 0||$image_quality > 100;
+
+if($recursive == 1) {
+	# No traversal limit unless the user explicitly set one using --maxdepth 
+	$maxdepth = 0 if $maxdepth == -1; 
+} else {
+	$maxdepth = 1;
+}
 
 my @resize_algorithms = qw(Point Box Triangle Hermite Hanning Hamming Blackman Gaussian Quadratic Cubic Catrom Mitchell Lanczos Bessel Sinc);
 if(lc($resize_algorithm) eq "help"){
@@ -711,21 +720,21 @@ $| = 1; # Set canonical output
 #Get file list
 print "Compiling file list...";
 $img_path = substr($img_path, 0, -1) if substr($img_path, (length($img_path) - 1), 1) eq "/";
-my @directories = ();
-if($recursive == 1){
-    push(@directories, bsd_glob("$img_path/*/", GLOB_QUOTE));
-    @directories = ("$img_path/") if @directories == 0;
-}else{
-   push(@directories, "$img_path/"); 
-}
-foreach (@directories){
-    foreach $i (sort keys %filetypes){
-	push(@filelist, bsd_glob("$_*." . lc($i), GLOB_QUOTE));
-	push(@filelist, bsd_glob("$_*." . uc($i), GLOB_QUOTE));
-    }
-}
+File::Find::find({wanted => sub {
+			my $depth = $File::Find::name =~ tr#/##; # Count slashes
+			return if $maxdepth > 0 && $depth > $maxdepth;
+			if(-f) {
+				my $name = $File::Find::name;
+				for my $type (keys %filetypes) {
+					push @filelist, $name if 
+						$name =~ m/\.\Q$type\E$/i;
+				}
+
+			}
+		},
+	}, $img_path);
 print "ok.\n";
-print @filelist . " files in " . @directories . " directories.\n";
+print @filelist . " files.\n";
 
 #Check permissions on newly added files
 print "\n";
