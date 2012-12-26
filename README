@@ -90,6 +90,7 @@ Options
 --skip-images                skip image creation
 --skip-pages                 skip page creation
 --recursive                  recursively look for images
+--maxdepth                   traversal depth if recursive
 --comments                   ask for comment on each image
 --preview                    show preview before comment
 --sloppy                     enable sloppiness
